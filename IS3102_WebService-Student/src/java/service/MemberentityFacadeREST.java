@@ -13,12 +13,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -50,22 +53,106 @@ public class MemberentityFacadeREST extends AbstractFacade<Memberentity> {
 
     @POST
     @Override
-    @Consumes({"application/xml", "application/json"})
+    @Consumes(MediaType.APPLICATION_JSON)
     public void create(Memberentity entity) {
         super.create(entity);
     }
 
     @PUT
-    @Path("{id}")
-    @Consumes({"application/xml", "application/json"})
-    public void edit(@PathParam("id") Long id, Memberentity entity) {
-        super.edit(entity);
+    @Path("editMember")
+    @Consumes({"application/json"})
+    @Produces({"application/json"})
+    public Response editMember(@QueryParam("password") String password, Member entity) {
+        try {
+            //super.edit(entity);
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/islandfurniture-it07?zeroDateTimeBehavior=convertToNull&user=root&password=12345");
+            String sqlStr = "UPDATE memberentity SET ADDRESS=?, AGE=?, NAME=?, PHONE=?, SECURITYANSWER=?, SECURITYQUESTION=?, INCOME=? WHERE EMAIL=?";
+            PreparedStatement pstmt = conn.prepareStatement(sqlStr);
+            pstmt.setString(1, entity.getAddress());
+            pstmt.setString(2, String.valueOf(entity.getAge()));
+            pstmt.setString(3, entity.getName());
+            pstmt.setString(4, entity.getPhone());
+            pstmt.setString(5, entity.getSecurityAnswer());
+            pstmt.setString(6, String.valueOf(entity.getSecurityQuestion()));
+            pstmt.setString(7, String.valueOf(entity.getIncome()));
+            pstmt.setString(8, entity.getEmail());
+
+            int result = pstmt.executeUpdate();
+
+            if (!password.isEmpty()) {
+                sqlStr = "UPDATE memberentity SET PASSWORDHASH=?, PASSWORDSALT=? WHERE EMAIL=?";
+                pstmt = conn.prepareStatement(sqlStr);
+                String pwSalt = generatePasswordSalt();
+                String pwHash = generatePasswordHash(pwSalt, password);
+                pstmt.setString(1, pwHash);
+                pstmt.setString(2, pwSalt);
+                pstmt.setString(3, entity.getEmail());
+
+                result += pstmt.executeUpdate();
+            }
+            sqlStr = "SELECT * FROM memberentity WHERE EMAIL=?";
+            pstmt = conn.prepareStatement(sqlStr);
+            pstmt.setString(1, entity.getEmail());
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                entity.setCity(rs.getString("CITY"));
+            }
+            conn.close();
+        } catch (SQLException ex) {
+            System.out.println(ex);
+            return Response
+                    .status(Response.Status.CONFLICT)
+                    .build();
+        }
+        return Response
+                .status(200)
+                .entity(entity)
+                .build();
+
     }
 
     @DELETE
     @Path("{id}")
     public void remove(@PathParam("id") Long id) {
         super.remove(super.find(id));
+    }
+
+    @GET
+    @Path("getMember")
+    @Produces({"application/json"})
+    public Response getMember(@QueryParam("email") String email) {
+
+        Member foundMember = new Member();
+        try {
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/islandfurniture-it07?zeroDateTimeBehavior=convertToNull&user=root&password=12345");
+            String stmt = "SELECT * FROM memberentity m WHERE m.EMAIL=?";
+            PreparedStatement pstmt = conn.prepareStatement(stmt);
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                foundMember.setAddress(rs.getString("ADDRESS"));
+                foundMember.setAge(rs.getInt("AGE"));
+                foundMember.setCity(rs.getString("CITY"));
+                foundMember.setCumulativeSpending(rs.getDouble("CUMULATIVESPENDING"));
+                foundMember.setEmail(email);
+                //foundMember.setId(rs.getLong("ID"));
+                foundMember.setIncome(rs.getInt("INCOME"));
+                foundMember.setLoyaltyPoints(rs.getInt("LOYALTYPOINTS"));
+                foundMember.setName(rs.getString("NAME"));
+                foundMember.setPhone(rs.getString("PHONE"));
+                foundMember.setSecurityAnswer(rs.getString("SECURITYANSWER"));
+                foundMember.setSecurityQuestion(rs.getInt("SECURITYQUESTION"));
+            }
+            conn.close();
+        } catch (Exception ex) {
+            return Response
+                    .status(Response.Status.NOT_FOUND)
+                    .build();
+        }
+        return Response
+                .status(200)
+                .entity(foundMember)
+                .build();
     }
 
     @GET
