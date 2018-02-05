@@ -45,7 +45,6 @@ public class ECommerce_MemberLoginServlet extends HttpServlet {
             if (memberEmail != null) {
                 List<CountryEntity> countries = facilityManagementBean.getListOfCountries();
                 session.setAttribute("countries", countries);
-
                 session.setAttribute("memberEmail", memberEmail);
                 response.sendRedirect("ECommerce_GetMember");
             } else {
