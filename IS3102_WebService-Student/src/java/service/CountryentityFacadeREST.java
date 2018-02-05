@@ -86,7 +86,7 @@ public class CountryentityFacadeREST extends AbstractFacade<Countryentity> {
         }
         return countryList;
     }
-    
+
     @Override
     protected EntityManager getEntityManager() {
         return em;

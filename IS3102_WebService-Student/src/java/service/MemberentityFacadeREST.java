@@ -103,7 +103,7 @@ public class MemberentityFacadeREST extends AbstractFacade<Memberentity> {
                 .build();
 
     }
-
+    
     @DELETE
     @Path("{id}")
     public void remove(@PathParam("id") Long id) {
